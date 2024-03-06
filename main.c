@@ -419,9 +419,9 @@ int main(int argc, const char **argv){
 				}
 			}
 			
-			/*
+			
 			//soft gain up
-			if(ev.key.keysym.sym == SDLK_UP){
+			if(ev.key.keysym.sym == SDLK_PLUS){
 				if(ev.type == SDL_KEYDOWN){
 					if(mic_soft_gain < 25){
 						mic_soft_gain += 1.0f;
@@ -429,14 +429,14 @@ int main(int argc, const char **argv){
 				}
 			}
 			//soft gain down
-			if(ev.key.keysym.sym == SDLK_DOWN){
+			if(ev.key.keysym.sym == SDLK_MINUS){
 				if(ev.type == SDL_KEYDOWN){
 					if(mic_soft_gain > 1){
 						mic_soft_gain -= 1.0f;
 					}
 				}
 			}
-			*/
+			
 			
 			
 
