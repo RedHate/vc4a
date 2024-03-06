@@ -28,7 +28,7 @@
 #define FREQ 			4000
 #define FORMAT 			AUDIO_S16 // (AUDIO_S16 0x0010) (AUDIO_S8 0x0008) // Not a datatype! is a definition
 #define CHANNELS 		1
-#define SAMPLES 		128
+#define SAMPLES 		32
 #define TYPE			short
 
 // microphone vars
@@ -367,8 +367,8 @@ int main(int argc, const char **argv){
 	vertex_tcnv out_waveform_vbo[SAMPLES];
 
 	//used for scaling the display
-	float time_factor = 0.042f; //figure this out programatically
-	float amp_factor  = 0.001f;  //figure this out programatically
+	float time_factor = 1.0f/(SAMPLES/5.0f); //figure this out programatically
+	float amp_factor  = 0.0001f;  //figure this out programatically
 
 	// main loop where we will add the control system that toggles the pauseaudiodevice function on / off
 	int running = 1;
@@ -419,11 +419,10 @@ int main(int argc, const char **argv){
 				}
 			}
 			
-			
 			//soft gain up
 			if(ev.key.keysym.sym == SDLK_PLUS){
 				if(ev.type == SDL_KEYDOWN){
-					if(mic_soft_gain < 25){
+					if(mic_soft_gain < 25.0f){
 						mic_soft_gain += 1.0f;
 					}
 				}
@@ -431,31 +430,31 @@ int main(int argc, const char **argv){
 			//soft gain down
 			if(ev.key.keysym.sym == SDLK_MINUS){
 				if(ev.type == SDL_KEYDOWN){
-					if(mic_soft_gain > 1){
+					if(mic_soft_gain > 1.0f){
 						mic_soft_gain -= 1.0f;
 					}
 				}
 			}
 			
-			
-			
-
+			//amp
 			if(ev.key.keysym.sym == SDLK_UP){
 				if(ev.type == SDL_KEYDOWN){
 					if(amp_factor < 0.1){
-						amp_factor += 0.001f;
+						amp_factor += 0.0001f;
 					}
 				}
 			}
 
 			if(ev.key.keysym.sym == SDLK_DOWN){
 				if(ev.type == SDL_KEYDOWN){
-					if(amp_factor > 0.001){
-						amp_factor -= 0.001f;
+					if(amp_factor > 0.0001){
+						amp_factor -= 0.0001f;
 					}
 				}
 			}
 
+
+			//time
 			if(ev.key.keysym.sym == SDLK_RIGHT){
 				if(ev.type == SDL_KEYDOWN){
 					if(time_factor < 0.1){
