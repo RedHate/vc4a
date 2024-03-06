@@ -29,6 +29,7 @@
 #define FORMAT 			AUDIO_S16 // (AUDIO_S16 0x0010) (AUDIO_S8 0x0008) // Not a datatype! is a definition
 #define CHANNELS 		1
 #define SAMPLES 		128
+#define TYPE			short
 
 // microphone vars
 int mic_soft_gain  	=  1;
@@ -37,15 +38,16 @@ int mic_soft_gain  	=  1;
 int a_socket 		= -1;
 
 // buffer used for creating a matrices (needed a place to store the list)
-short out_waveform_buffer[CHANNELS*SAMPLES];
-short  in_waveform_buffer[CHANNELS*SAMPLES];
+TYPE out_waveform_buffer[CHANNELS*SAMPLES];
+TYPE  in_waveform_buffer[CHANNELS*SAMPLES];
 
 // input callback that updates mic input and the waveform buffer used to update vertex buffer objects
 static void input_callback(void* userdata, Uint8* stream, int len){
 	//softgain (preprocess the samples before they hit the buffer)
 	int i;
-	for(i=0;i<SAMPLES;i++){
-		stream[i] = (float)stream[i] * mic_soft_gain;
+	for(i=0;i<len/2;i++){
+		short *ptr = (short*)stream;
+		ptr[i] = (float)ptr[i] * mic_soft_gain;
 	}
 	// write tx stream to network socket if network socket is valid
 	if(a_socket > 0){
@@ -138,7 +140,7 @@ int main(int argc, const char **argv){
 	} vertex_tcnv;
 
 	// bandwidth usage per-second
-	int bw = (int)(FREQ*CHANNELS*SAMPLES*sizeof(short));
+	int bw = (int)(FREQ*CHANNELS*SAMPLES*sizeof(TYPE));
 	printf("Bandwidth: %d bytes (per second)\r\n", bw);
 
 	// init sdl audio
@@ -171,8 +173,8 @@ int main(int argc, const char **argv){
 	}
 
 	// init the input and output threads
-	SDL_AudioDeviceID AudioInputDevice  = init_audio(1, AUDIO_S16, FREQ, SAMPLES, CHANNELS, index);
-	SDL_AudioDeviceID AudioOutputDevice = init_audio(0, AUDIO_S16, FREQ, SAMPLES, CHANNELS, index);
+	SDL_AudioDeviceID AudioInputDevice  = init_audio(1, FORMAT, FREQ, SAMPLES, CHANNELS, index);
+	SDL_AudioDeviceID AudioOutputDevice = init_audio(0, FORMAT, FREQ, SAMPLES, CHANNELS, index);
 
 	// network initialization function returns socket
 	int start_network(const char *address, const char *port, int mode){
@@ -318,7 +320,7 @@ int main(int argc, const char **argv){
 		glLoadIdentity();
 		{
 			// position and rotation of model is for the most part ignored
-			glTranslatef(0, 0, -50);
+			glTranslatef(0, 0, -2.0f);
 			glRotatef(0, 0, 0, 1);
 			glRotatef(0, 0, 1, 0);
 			glRotatef(0, 1, 0, 0);
@@ -363,6 +365,10 @@ int main(int argc, const char **argv){
 	// our two vertex buffer objects used to draw the waveforms
 	vertex_tcnv in_waveform_vbo[SAMPLES];
 	vertex_tcnv out_waveform_vbo[SAMPLES];
+
+	//used for scaling the display
+	float time_factor = 0.042f; //figure this out programatically
+	float amp_factor  = 0.001f;  //figure this out programatically
 
 	// main loop where we will add the control system that toggles the pauseaudiodevice function on / off
 	int running = 1;
@@ -412,6 +418,8 @@ int main(int argc, const char **argv){
 					SDL_PauseAudioDevice(AudioInputDevice,  SDL_FALSE);
 				}
 			}
+			
+			/*
 			//soft gain up
 			if(ev.key.keysym.sym == SDLK_UP){
 				if(ev.type == SDL_KEYDOWN){
@@ -428,12 +436,51 @@ int main(int argc, const char **argv){
 					}
 				}
 			}
+			*/
+			
+			
+
+			if(ev.key.keysym.sym == SDLK_UP){
+				if(ev.type == SDL_KEYDOWN){
+					if(amp_factor < 0.1){
+						amp_factor += 0.001f;
+					}
+				}
+			}
+
+			if(ev.key.keysym.sym == SDLK_DOWN){
+				if(ev.type == SDL_KEYDOWN){
+					if(amp_factor > 0.001){
+						amp_factor -= 0.001f;
+					}
+				}
+			}
+
+			if(ev.key.keysym.sym == SDLK_RIGHT){
+				if(ev.type == SDL_KEYDOWN){
+					if(time_factor < 0.1){
+						time_factor += 0.001f;
+					}
+				}
+			}
+
+			if(ev.key.keysym.sym == SDLK_LEFT){
+				if(ev.type == SDL_KEYDOWN){
+					if(time_factor > 0.001){
+						time_factor -= 0.001f;
+					}
+				}
+			}
+			
+			
+			
+			
 		}
 
 		// update both vbos in a single pass 
 		for (int i=0;i<SAMPLES;i++){
-			 in_waveform_vbo[i] = (vertex_tcnv) { {1, 1}, {0,1,1,1}, {0, 0, 1}, {(float)((-SAMPLES/2)+i), (float)( in_waveform_buffer[i])/SAMPLES, 0} };
-			out_waveform_vbo[i] = (vertex_tcnv) { {1, 1}, {1,0,1,1}, {0, 0, 1}, {(float)((-SAMPLES/2)+i), (float)(out_waveform_buffer[i])/SAMPLES, 0} };
+			 in_waveform_vbo[i] = (vertex_tcnv) { {1, 1}, {0,1,1,1}, {0, 0, 1}, {(float)((-SAMPLES/2)+i)*time_factor, (float)( in_waveform_buffer[i])*amp_factor, 0} };
+			out_waveform_vbo[i] = (vertex_tcnv) { {1, 1}, {1,0,1,1}, {0, 0, 1}, {(float)((-SAMPLES/2)+i)*time_factor, (float)(out_waveform_buffer[i])*amp_factor, 0} };
 		}
 
 		// clear the screen with a nice dark gray
