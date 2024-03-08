@@ -34,6 +34,9 @@
 // microphone vars
 int mic_soft_gain  	=  1;
 
+// microphone toggle on off
+int mic_enabled = 0;
+
 // network sockets
 int a_socket 		= -1;
 
@@ -43,20 +46,24 @@ TYPE  in_waveform_buffer[CHANNELS*SAMPLES];
 
 // input callback that updates mic input and the waveform buffer used to update vertex buffer objects
 static void input_callback(void* userdata, Uint8* stream, int len){
-	//softgain (preprocess the samples before they hit the buffer)
-	int i;
-	for(i=0;i<len/2;i++){
-		short *ptr = (short*)stream;
-		ptr[i] = (float)ptr[i] * mic_soft_gain;
+	
+	if(mic_enabled){
+		//softgain (preprocess the samples before they hit the buffer)
+		int i;
+		for(i=0;i<len/sizeof(TYPE);i++){
+			short *ptr = (short*)stream;
+			ptr[i] = (float)ptr[i] * mic_soft_gain;
+		}
+		// write tx stream to network socket if network socket is valid
+		if(a_socket > 0){
+			// write the stream to the socket
+			if(write(a_socket, stream, len) > 0){
+				// bytes were written no need to bitch about it
+				memcpy(out_waveform_buffer, stream, len);
+			}
+		}
 	}
-	// write tx stream to network socket if network socket is valid
-	if(a_socket > 0){
-		// write the stream to the socket
-		if(write(a_socket, stream, len) > 0){
-			// bytes were written no need to bitch about it
-			memcpy(&out_waveform_buffer[0], &stream[0], len);
-		} 
-	}
+	
 }
 
 // output callback that updates audio and the waveform buffer used to update vertex buffer objects
@@ -66,7 +73,7 @@ static void output_callback(void* userdata, Uint8* stream, int len){
 		// read any inbound socket data into the rx stream
 		if(read(a_socket, stream, len) > 0){
 			// bytes were read no need to bitch about it
-			memcpy(&in_waveform_buffer[0], &stream[0], len);
+			memcpy(in_waveform_buffer, stream, len);
 		}
 	}
 }
@@ -261,6 +268,7 @@ int main(int argc, const char **argv){
 	printf("Peer connection esablished.\r\n");
 
 	// unpause the playback thread (start playing)
+	SDL_PauseAudioDevice( AudioInputDevice, SDL_FALSE); 
 	SDL_PauseAudioDevice( AudioOutputDevice, SDL_FALSE);  
 
 	// init sdl video
@@ -406,16 +414,22 @@ int main(int argc, const char **argv){
 			// mic button (push to talk)
 			if(ev.key.keysym.sym == SDLK_SPACE){
 				if(ev.type == SDL_KEYDOWN){
-					SDL_PauseAudioDevice(AudioInputDevice,  SDL_FALSE);
-				}
-				if(ev.type == SDL_KEYUP){
-					SDL_PauseAudioDevice(AudioInputDevice,  SDL_TRUE);
+					mic_enabled = 1;
 				}
 			}
+			
+			if(ev.key.keysym.sym == SDLK_SPACE){
+				if(ev.type == SDL_KEYUP){
+					mic_enabled = 0;
+				}
+			}
+			
+			
+			
 			// latch button
 			if(ev.key.keysym.sym == SDLK_l){
 				if(ev.type == SDL_KEYDOWN){
-					SDL_PauseAudioDevice(AudioInputDevice,  SDL_FALSE);
+					mic_enabled = 1;
 				}
 			}
 			
